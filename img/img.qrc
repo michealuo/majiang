@@ -1,0 +1,14 @@
+<RCC>
+  <qresource prefix="打牌背景">
+    <file>background-play.jpg</file>
+  </qresource>
+  <qresource prefix="一条">
+    <file>bamboo1.png</file>
+  </qresource>
+  <qresource prefix="打牌背景">
+    <file>Play-background.jpg</file>
+  </qresource>
+  <qresource prefix="背景">
+    <file>background.jpg</file>
+  </qresource>
+</RCC>
