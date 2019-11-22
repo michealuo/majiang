@@ -318,8 +318,7 @@ class Me(Gamer):
         self.win()
 
         # 查看是否能杠
-        self.check_AAAA_WIN()
-        # 打牌
+        self.check_AAAA()
         self.put_majiang()
 
 
@@ -351,7 +350,7 @@ class Me(Gamer):
 #初始化牌库
 def start():
     #打乱牌库顺序
-    #random.shuffle(majiang)
+    random.shuffle(majiang)
     #初始化4家麻将手牌[[],[],[],[]]
     majiang_split = []
     #循坏4次 一次取总牌库中13张 存入初始化玩家牌库列表
