@@ -1,4 +1,5 @@
 from views.regist import *
+import sys
 class Majiang(QDialog):
 
     def __init__(self):
@@ -35,6 +36,7 @@ class Majiang(QDialog):
         self.button_login.setGeometry(150, 300, 100, 40)
         self.button_regist.setGeometry(300, 300, 100, 40)
         self.button_login.clicked.connect(self.on_click_check)
+        self.button_regist.clicked.connect(self.on_click_regist)
         self.show()
 
     #初始化界面
@@ -59,6 +61,11 @@ class Majiang(QDialog):
         self.move(qr.topLeft())
 
     @pyqtSlot()
+    def on_click_regist(self):
+        regist.usernameLineEdit.textChanged.connect(self.username_inner_slot)
+        regist.passwordLineEdit.textChanged.connect(self.password_inner_slot)
+
+    @pyqtSlot()
     def on_click_check(self):
         username = self.lineEdit_account.text()
         pwd = self.lineEdit_password.text()
@@ -71,11 +78,15 @@ class Majiang(QDialog):
             #登录成功进入下一个页面窗口
             pass
 
+    def username_inner_slot(self, date):
+        self.lineEdit_account.setText(str(date))
 
+    def password_inner_slot(self, date):
+        self.lineEdit_password.setText(str(date))
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = Majiang()
-    regist = SignUpWidget()
     res = ex.login()
+    regist = SignUpWidget()
     ex.button_regist.clicked.connect(regist.show)
     sys.exit(app.exec_())

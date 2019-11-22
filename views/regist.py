@@ -1,9 +1,6 @@
-import sys
-from common.Tools import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
-from module.user import user
 from sql.handle_sql import *
 
 class SignUpWidget(QWidget):
@@ -147,9 +144,3 @@ class SignUpWidget(QWidget):
             return "用户名重复,请重新命名"
         return "注册成功"
 
-# if __name__ == "__main__":
-#     app = QApplication(sys.argv)
-#     app.setWindowIcon(QIcon("./images/MainWindow_1.png"))
-#     mainMindow = SignUpWidget()
-#     mainMindow.show()
-#     sys.exit(app.exec_())
