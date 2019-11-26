@@ -35,9 +35,11 @@ class Handle_Sql:
         for i in range(len(colunm_lis)):
             if i == 0:
                 sql += " where " + colunm_name[0] + " = "
-                sql += colunm_lis[0]
             else:
                 sql += " and " + colunm_name[i] + " = "
+            if res_value[i] == "%s":
+                sql += "'" + colunm_lis[i] + "'"
+            else:
                 sql += colunm_lis[i]
         print(sql)
         return self.cur.execute(sql)
