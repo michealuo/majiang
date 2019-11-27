@@ -53,6 +53,8 @@ class Handle_Sql:
         :param obj: 需要操作数据库的对象
         :return: none(插入一条数据)
         """
+        if not obj:
+            return
         try:
             table_name = get_table_name(obj)
             colunm_name,colunm_val,res_value = get_colunm(obj)
