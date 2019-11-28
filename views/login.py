@@ -1,11 +1,13 @@
-from views.regist import *
-import sys
-class Majiang(QDialog):
+from regist import *
+from entergame import *
+class Login(QDialog):
 
-    def __init__(self):
+    def __init__(self,s,regist,app):
         super().__init__()
         self.initUI()
-
+        self.s =s
+        self.regist=regist
+        self.app=app
     def login(self):
         self.frame = QFrame(self)
         self.verticalLayout = QVBoxLayout(self.frame)
@@ -62,8 +64,8 @@ class Majiang(QDialog):
 
     @pyqtSlot()
     def on_click_regist(self):
-        regist.usernameLineEdit.textChanged.connect(self.username_inner_slot)
-        regist.passwordLineEdit.textChanged.connect(self.password_inner_slot)
+        self.regist.usernameLineEdit.textChanged.connect(self.username_inner_slot)
+        self.regist.passwordLineEdit.textChanged.connect(self.password_inner_slot)
 
     @pyqtSlot()
     def on_click_check(self):
@@ -75,18 +77,23 @@ class Majiang(QDialog):
             QMessageBox.question(self, "Message", '登录失败:错误的用户名或密码',
                                  QMessageBox.Ok, QMessageBox.Ok)
         else:
-            #登录成功进入下一个页面窗口
-            pass
+            # self.send_msg()
+            # self.recv_msg()
+            # 跳转到进入游戏界面
+            self.jump_to_EnterGame()
+
+    # 跳转到进入游戏界面
+    def jump_to_EnterGame(self):
+
+        self.hide()
+        enter = EnterGame(self.s)
+        enter.initUI()
+        enter.show()
+        enter.exec_()
+        self.show()
 
     def username_inner_slot(self, date):
         self.lineEdit_account.setText(str(date))
 
     def password_inner_slot(self, date):
         self.lineEdit_password.setText(str(date))
-if __name__ == '__main__':
-    app = QApplication(sys.argv)
-    ex = Majiang()
-    res = ex.login()
-    regist = SignUpWidget()
-    ex.button_regist.clicked.connect(regist.show)
-    sys.exit(app.exec_())
