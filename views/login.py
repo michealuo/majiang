@@ -64,29 +64,33 @@ class Login(QDialog):
 
     @pyqtSlot()
     def on_click_regist(self):
-        self.regist.usernameLineEdit.textChanged.connect(self.username_inner_slot)
-        self.regist.passwordLineEdit.textChanged.connect(self.password_inner_slot)
+        signup =SignUpWidget(self.s)
+        signup.usernameLineEdit.textChanged.connect(self.username_inner_slot)
+        signup.passwordLineEdit.textChanged.connect(self.password_inner_slot)
 
     @pyqtSlot()
     def on_click_check(self):
         username = self.lineEdit_account.text()
         pwd = self.lineEdit_password.text()
-        user_ = user(username,pwd)
+        #点击登录按钮发送服务器进入游戏请求
+        msg="L %s %s"%(username,pwd)
+        self.s.send(msg.encode())
+        data=self.s.recv(1024).decode()
+
         #校验
-        if not Handle_Sql().check(user_):
+        if data=='no':
             QMessageBox.question(self, "Message", '登录失败:错误的用户名或密码',
                                  QMessageBox.Ok, QMessageBox.Ok)
-        else:
-            # self.send_msg()
-            # self.recv_msg()
+        elif data=='yes':
+
             # 跳转到进入游戏界面
-            self.jump_to_EnterGame()
+            self.jump_to_EnterGame(username)
 
     # 跳转到进入游戏界面
-    def jump_to_EnterGame(self):
+    def jump_to_EnterGame(self,username):
 
         self.hide()
-        enter = EnterGame(self.s)
+        enter = EnterGame(self.s,username)
         enter.initUI()
         enter.show()
         enter.exec_()

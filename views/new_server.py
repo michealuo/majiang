@@ -1,9 +1,17 @@
 import sys
 from socket import *
 from threading import Thread
+from module.user import user
+
+from sql.handle_sql import Handle_Sql
+
 HOST = '127.0.0.1'
 PORT = 9999
 ADDR = (HOST, PORT)
+
+
+
+
 
 class Server():
     def __init__(self):
@@ -43,22 +51,24 @@ class Server():
 
     def handle(self,c):#接收数据 进行判断处理
         while True:
-            data = c.recv(1024)
+            data = c.recv(1024).decode().split(' ')
             # 判断客户端是否断开
             if not data:
 
                 for i in self.list_user:
                     if i == c:
                         self.list_user.remove(i)
+                        print(self.list_user)
                 c.close()
+            elif data[0]=='R':
+                self.do_rigister(data[1], data[4], data[3], data[2],c)
 
-            # if....：
-            #     注册
-            # if...：
-            #     登录
-            # ......
+
+            elif data[0]=='L':
+                self.do_login(data[1], data[2],c)
+
             #满足条件判断是否进入游戏
-            if data.decode() =='ready':
+            elif data[0]=='E':
                 self.do_entergame(c)
             # 判断人数是否满足开始游戏
 
@@ -74,6 +84,21 @@ class Server():
             del self.list_user[0]
             print(self.list_user)
 
+    def do_rigister(self, name, passwd, phone, ip,c):
+        if Handle_Sql().check(user(name)):
+            c.send(b"rno")
+        else:
+            user_ = user(name, passwd, phone, ip)
+            Handle_Sql().insert_one(user_)
+
+            c.send(b'ryes')
+
+    def do_login(self, name, passwd,c):
+        user_ = user(name,passwd)
+        if not Handle_Sql().check(user_):
+            c.send(b'no')
+        else:
+            c.send(b'yes')
 
 if __name__ == '__main__':
 

@@ -1,20 +1,26 @@
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
+import sys
+sys.path.append("/home/tarena/majiang")
 from sql.handle_sql import *
 
 class SignUpWidget(QWidget):
     user_signup_signal = pyqtSignal(str)
 
-    def __init__(self):
+    def __init__(self,s):
+        self.s=s
         super().__init__()
         self.setUpUI()
-
+        #界面
     def setUpUI(self):
-
+        #界面标题
         self.setWindowTitle("血流成河")
+        #注册标签
         self.signUpLabel = QLabel("注   册")
+        #界面居中
         self.center()
+        #界面宽高
         self.resize(550, 450)
         #背景
         palette = QPalette()
@@ -120,27 +126,28 @@ class SignUpWidget(QWidget):
         phone_num = self.phoneNumberLineEdit.text()
         pwd = self.passwordLineEdit.text()
         pwd_confirm = self.passwordConfirmLineEdit.text()
-        #进行校验
+        #点击注册按钮进行校验，并向服务器发送请求跳转登录界面
+        self.check_regist(username, phone_num, ip,pwd, pwd_confirm)
 
-        msg = self.check_regist(username, phone_num, pwd, pwd_confirm)
 
-        if msg == "注册成功":
-            user_ = user(username,pwd,ip,phone_num)
-            Handle_Sql().insert_one(user_)
-            self.close()
-        else:
-            QMessageBox.question(self, "Message", '注册失败:'+msg,
-                                 QMessageBox.Ok, QMessageBox.Ok)
 
     def check_regist(self,*args):
         #非空校验
         if not check_none(*args):
             return "注册信息不能为空"
         #密码确认密码校验
-        if not check_password(args[2],args[3]):
+        if not check_password(args[3],args[4]):
             return "密码和确认密码不一致"
-        #用户名是否重复校验
-        if Handle_Sql().check(user(args[0])):
-            return "用户名重复,请重新命名"
-        return "注册成功"
 
+        #用户名是否重复校验
+        msg = "R %s %s %s %s"%(args[0],args[1],args[2],args[3])
+        self.s.send(msg.encode())
+        data=self.s.recv(1024).decode()
+        if data == "ryes":
+            QMessageBox.question(self, "Message", '注册成功' ,
+                                 QMessageBox.Ok, QMessageBox.Ok)
+            self.close()
+
+        elif data=='rno':
+            QMessageBox.question(self, "Message", '注册失败:'+msg,
+                                 QMessageBox.Ok, QMessageBox.Ok)
