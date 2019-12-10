@@ -1,3 +1,5 @@
+import json
+
 from regist import *
 from entergame import *
 class Login(QDialog):
@@ -64,24 +66,29 @@ class Login(QDialog):
 
     @pyqtSlot()
     def on_click_regist(self):
-        signup =SignUpWidget(self.s)
+        signup = SignUpWidget(self.s)
         signup.usernameLineEdit.textChanged.connect(self.username_inner_slot)
         signup.passwordLineEdit.textChanged.connect(self.password_inner_slot)
 
     @pyqtSlot()
     def on_click_check(self):
+        #用户名
         username = self.lineEdit_account.text()
+        #密码
         pwd = self.lineEdit_password.text()
         #点击登录按钮发送服务器进入游戏请求
-        msg="L %s %s"%(username,pwd)
-        self.s.send(msg.encode())
-        data=self.s.recv(1024).decode()
+        json_info = {'protocol':'L','username':username,'password':pwd}
+        #去服务器校验用户名密码是否正确
+        self.s.send(json.dumps(json_info).encode())
+        #返回校验值
+        data = json.loads(self.s.recv(1024).decode())
 
-        #校验
-        if data=='no':
+        #校验失败
+        if data['protocol'] =='Lno':
             QMessageBox.question(self, "Message", '登录失败:错误的用户名或密码',
                                  QMessageBox.Ok, QMessageBox.Ok)
-        elif data=='yes':
+        #校验成功
+        elif data['protocol'] =='Lyes':
 
             # 跳转到进入游戏界面
             self.jump_to_EnterGame(username)

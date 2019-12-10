@@ -1,7 +1,10 @@
+import json
+
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
+import easygui as g
 import sys
 # from winproblem import *
 class EnterGame(QDialog):
@@ -67,7 +70,6 @@ class EnterGame(QDialog):
         :param event: close()触发的事件
         :return: None
         """
-        print("=========")
         reply = QtWidgets.QMessageBox.question(self,
                                                '本程序',
                                                "是否要退出程序？",
@@ -81,59 +83,26 @@ class EnterGame(QDialog):
             event.ignore()
 
     @pyqtSlot()
-
     def on_click(self):
-        #点击进入游戏给服务器发送进入游戏的请求
-        self.s.send('E ready'.encode())
-        while True:
-            data = self.s.recv(1024)
+        # 点击进入游戏,开始游戏,发送准备
+        json_info = {'protocol': 'Ready'}
 
-            if data.decode() == 'Pok':
-                print(data.decode())
-                #进入游戏界面
-                # self.playgame()
-            elif data.decode() == 'longin':
-                print(data.decode())
-    # def playgame(self):
-    #
-    #     # 初始化牌库
-    #     majiang = []
-    #     for i in range(3):
-    #         for j in range(1, 10):
-    #             for k in range(4):
-    #                 if i == 0:
-    #                     majiang.append(str(j) + "万")
-    #                 if i == 1:
-    #                     majiang.append(str(j) + "条")
-    #                 if i == 2:
-    #                     majiang.append(str(j) + "饼")
-    #     wan = ['1万', '2万', '3万', '4万', '5万', '6万', '7万', '8万', '9万']
-    #     tiao = ['1条', '2条', '3条', '4条', '5条', '6条', '7条', '8条', '9条']
-    #     bing = ['1饼', '2饼', '3饼', '4饼', '5饼', '6饼', '7饼', '8饼', '9饼']
-    #
-    #     # 初始化牌库
-    #     majiang_split = start()
-    #
-    #     # 初始化自己手牌
-    #     me = Me(majiang_split[3])
-    #     # 剩余牌库(将牌库给4个玩家后的麻将牌库)
-    #     majiang = majiang[52:]
-    #
-    #     # 记录出牌顺序
-    #     i = 0
-    #     # 牌库还有牌继续
-    #     while majiang != []:
-    #         # 是否有杠
-    #         gang_flag = 0
-    #         try:
-    #             # 获取牌并且返回一张牌
-    #             put = me.get_majiang(majiang.pop(0))
-    #
-    #         except IndexError:
-    #             # majiang[0]没有值,牌库空了
-    #             g.msgbox('黄了！', '麻将三缺一')
-    #             sys.exit(0)
-        # QMessageBox.question(self, "Message", 'You typed:' + username,
-        #                      QMessageBox.Ok, QMessageBox.Ok)
-        # QMessageBox.question(self, "Message", 'You typed:' + pwd,
-        #                      QMessageBox.Ok, QMessageBox.Ok)
+        self.s.send(json.dumps(json_info).encode())
+        # 返回校验值
+        data = json.loads(self.s.recv(1024).decode())
+        #返回play 代表游戏已经开始
+        if data['protocol'] == 'Play':
+            self.playgame(data)
+        elif data['protocol'] == 'Outtime':
+            QMessageBox.question(self, "Message", '连接超时',
+                                 QMessageBox.Ok, QMessageBox.Ok)
+
+    def playgame(self,first_data):
+        #第一次出牌
+        self.putresult = g.choicebox(
+            '您的麻将是:\n%s\n%s\n%s\n碰：%s\n杠：%s\n请选择要打的麻将' % \
+            (str(first_data['wan']), str(first_data['tiao']), str(first_data['bing']),
+             str(first_data['peng_majiang']), str(first_data['angang_majiang'])), '打麻将',
+            first_data['majiang'])
+        while True:
+            data = json.loads(self.s.recv(1024).decode())

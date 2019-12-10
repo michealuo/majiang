@@ -1,8 +1,11 @@
+import json
+
 from PyQt5.QtWidgets import *
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 import sys
-sys.path.append("/home/tarena/majiang")
+sys.path.append("/home/tarena/majiang/sql")
+sys.path.append("../")
 from sql.handle_sql import *
 
 class SignUpWidget(QWidget):
@@ -139,15 +142,20 @@ class SignUpWidget(QWidget):
         if not check_password(args[3],args[4]):
             return "密码和确认密码不一致"
 
-        #用户名是否重复校验
-        msg = "R %s %s %s %s"%(args[0],args[1],args[2],args[3])
-        self.s.send(msg.encode())
-        data=self.s.recv(1024).decode()
-        if data == "ryes":
+        #去服务器校验用户信息
+        json_info = {'protocol': 'R', 'username': args[0], 'password': args[3],
+                     'phone': args[1],'ip': args[2]}
+
+        # 去服务器校验用户名密码是否正确
+        self.s.send(json.dumps(json_info).encode())
+
+        # 返回校验值
+        data = json.loads(self.s.recv(1024).decode())
+        if data['protocol'] == "Ryes":
             QMessageBox.question(self, "Message", '注册成功' ,
                                  QMessageBox.Ok, QMessageBox.Ok)
             self.close()
 
-        elif data=='rno':
-            QMessageBox.question(self, "Message", '注册失败:'+msg,
+        elif data['protocol']=='Rno':
+            QMessageBox.question(self, "Message", '注册失败:'+data,
                                  QMessageBox.Ok, QMessageBox.Ok)
