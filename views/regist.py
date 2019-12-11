@@ -157,5 +157,5 @@ class SignUpWidget(QWidget):
             self.close()
 
         elif data['protocol']=='Rno':
-            QMessageBox.question(self, "Message", '注册失败:'+data,
+            QMessageBox.question(self, "Message", '注册失败:'+data['msg'],
                                  QMessageBox.Ok, QMessageBox.Ok)

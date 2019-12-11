@@ -29,15 +29,6 @@ class EnterGame(QDialog):
         # #todo 1 设置窗口背景图片
         self.setStyleSheet("#MainWindow{border-image:url(../img/timg.jpeg);}")
 
-        # todo 2 设置窗口背景色
-        # win.setStyleSheet("#MainWindow{background-color: yellow}")
-        # 控件QPushButton的定义和设置
-        # 设置控件QPushButton的位置和大小
-        # create textbox
-        # self.textbox = QLineEdit(self)
-        # self.textbox.move(20, 220)
-        # self.textbox.resize(280, 40)
-
         self.frame = QFrame(self)
         self.verticalLayout = QVBoxLayout(self.frame)
         self.frame.move(200, 200)
@@ -92,17 +83,59 @@ class EnterGame(QDialog):
         data = json.loads(self.s.recv(1024).decode())
         #返回play 代表游戏已经开始
         if data['protocol'] == 'Play':
-            self.playgame(data)
+            self.init_game(data)
         elif data['protocol'] == 'Outtime':
             QMessageBox.question(self, "Message", '连接超时',
                                  QMessageBox.Ok, QMessageBox.Ok)
 
-    def playgame(self,first_data):
-        #第一次出牌
-        self.putresult = g.choicebox(
-            '您的麻将是:\n%s\n%s\n%s\n碰：%s\n杠：%s\n请选择要打的麻将' % \
-            (str(first_data['wan']), str(first_data['tiao']), str(first_data['bing']),
-             str(first_data['peng_majiang']), str(first_data['angang_majiang'])), '打麻将',
-            first_data['majiang'])
+    def init_game(self,first_data):
+        json_info = {}
+        #协议
+        json_info['protocol'] ='Play'
+        #打出的麻将
+        json_info['put_majiang'] = ''
+        #是否是该玩家出的牌
+        json_info['turns'] = 0
+        #操作信息
+        json_info['operation'] = 'init_over'
+
+
+        if first_data['turns']:
+            #东家看牌:win,gang
+            pass
+
+            #东家初始化
+            self.putresult = g.choicebox(
+                '您的麻将是:\n%s\n%s\n%s\n碰：%s\n杠：%s\n请选择要打的麻将' % \
+                (str(first_data['wan']), str(first_data['tiao']), str(first_data['bing']),
+                 str(first_data['peng_majiang']), str(first_data['angang_majiang'])), '打麻将',
+                first_data['majiang'])
+            # 打出的麻将
+            json_info['put_majiang'] = putresult
+            #东家回消息打出麻将
+            json_info['operation'] = 'put_majiang'
+            # 是否是该玩家出的牌
+            json_info['turns'] = 1
+
+            self.s.send(json.dumps(json_info).encode())
+        else:
+            #其他玩家看牌
+            g.msgbox('您的麻将是:\n%s\n%s\n%s\n碰：%s\n杠：%s\n' % \
+                (str(first_data['wan']), str(first_data['tiao']), str(first_data['bing']),
+                 str(first_data['peng_majiang']), str(first_data['angang_majiang'])), '打麻将',
+                )
+            json_info['put_majiang'] = ''
+            self.s.send(json.dumps(json_info).encode())
+
+        self.playgame()
+
+    def playgame(self):
         while True:
             data = json.loads(self.s.recv(1024).decode())
+            #判断操作
+            if data['operation'] == 'win':
+                g.msgbox('玩家%s胡了！\n%s' % (data['winner'], str(self.majiang_type) + \
+                                          3 * str(self.peng_majiang) + 4 * str(self.angang_majiang)))
+                exit()
+
+            self.s.send(json.dumps(json_info).encode())
