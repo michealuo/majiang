@@ -111,7 +111,7 @@ class EnterGame(QDialog):
                  str(first_data['peng_majiang']), str(first_data['angang_majiang'])), '打麻将',
                 first_data['majiang'])
             # 打出的麻将
-            json_info['put_majiang'] = putresult
+            json_info['put_majiang'] = self.putresult
             #东家回消息打出麻将
             json_info['operation'] = 'put_majiang'
             # 是否是该玩家出的牌
@@ -130,12 +130,16 @@ class EnterGame(QDialog):
         self.playgame()
 
     def playgame(self):
+        json_info = {}
         while True:
             data = json.loads(self.s.recv(1024).decode())
             #判断操作
             if data['operation'] == 'win':
-                g.msgbox('玩家%s胡了！\n%s' % (data['winner'], str(self.majiang_type) + \
-                                          3 * str(self.peng_majiang) + 4 * str(self.angang_majiang)))
-                exit()
+                g.msgbox('玩家%s胡了！\n%s' % (data['winner'], str(data['majiang_type']) + \
+                                          3 * str(data['peng_majiang']) + 4 * str(data['angang_majiang'])))
+
+            json_info['operation'] = 'over'
+            json_info['protocol'] = 'Play'
+            json_info['desk_id'] = data['desk_id']
 
             self.s.send(json.dumps(json_info).encode())

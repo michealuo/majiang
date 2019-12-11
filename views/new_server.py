@@ -114,7 +114,7 @@ class Server():
                     if c != lis_c[i]:
                         # 给麻将排序,得到万,条,饼
                         majiang_type, majiang_set = self.sort_majiang(
-                            self.dict_sit_majiang[desk_id + '_' + str(i)][desk_id][0])
+                            self.dict_sit_majiang[desk_id + '_' + str(i)][0])
                         #加入得到的麻将验胡
                         if data['put_majiang'] in self.wan:
                             majiang_type[0].append(data['put_majiang'])
@@ -135,6 +135,11 @@ class Server():
 
                 #改变下家turns(代表是否该他接牌)给他一张牌
                 print("==+==",data['put_majiang'])
+        #游戏结束
+        elif data['operation'] == 'over':
+            desk_id = data['desk_id']
+            self.release_resource(desk_id)
+
             
     def init_game(self,data):
         desk_id = data['desk_id']
@@ -142,7 +147,7 @@ class Server():
         data_majiang['desk_id'] = desk_id
         for i in range(len(self.dict_desk[desk_id])):
             # 给麻将排序
-            majiang_type, majiang_set = self.sort_majiang(self.dict_sit_majiang[desk_id+'_'+str(i)][desk_id][0])
+            majiang_type, majiang_set = self.sort_majiang(self.dict_sit_majiang[desk_id+'_'+str(i)][0])
             # 是否该这个玩家出牌
             if len(majiang_set) == 14:
                 data_majiang['turns'] = 1
@@ -168,7 +173,7 @@ class Server():
         try:
             self.ready_socket.append(c)
             # 看准备好游戏套接字的个数
-            if len(self.ready_socket) < 2:
+            if len(self.ready_socket) < 1:
                 # 可以给显示匹配的样式
                 pass
             # 开始游戏
@@ -231,10 +236,11 @@ class Server():
         # 剩余牌库(将牌库给4个玩家后的麻将牌库)
         self.dict_majiang = {desk_id: majiang[53:]}
         #麻将对应位置
-        self.dict_sit_majiang[desk_id + '_0'] = self.dict_majiang_east[0]
-        self.dict_sit_majiang[desk_id + '_1'] = self.dict_majiang_south[0]
-        self.dict_sit_majiang[desk_id + '_2'] = self.dict_majiang_west[0]
-        self.dict_sit_majiang[desk_id + '_3'] = self.dict_majiang_north[0]
+        self.dict_sit_majiang[desk_id + '_0'] = self.dict_majiang_east[desk_id]
+        self.dict_sit_majiang[desk_id + '_1'] = self.dict_majiang_south[desk_id]
+        self.dict_sit_majiang[desk_id + '_2'] = self.dict_majiang_west[desk_id]
+        self.dict_sit_majiang[desk_id + '_3'] = self.dict_majiang_north[desk_id]
+
 
     def do_rigister(self, data,c):
         #注册时判断用户名是否已经存在
@@ -400,7 +406,22 @@ class Server():
                 sum([len(cupple[each]) for each in cupple]) == 1:
             return 1
         return 0
-
+    def release_resource(self,desk_id):
+        # 游戏桌子id 和客户端套接字列表{'1':[c1,c2,c3,c4]}
+        del self.dict_desk[desk_id]
+        # 游戏桌子id 和牌库麻将列表{'1':[majiang]}
+        del self.dict_majiang[desk_id]
+        # 游戏桌子id 和东家麻将列表{'1':(手牌[],打出去的牌[],碰牌[],杠牌[])}
+        del self.dict_majiang_east[desk_id]
+        # 游戏桌子id 和南家麻将列表{'1':(手牌[],打出去的牌[],碰牌[],杠牌[])}
+        del self.dict_majiang_south[desk_id]
+        # 游戏桌子id 和西家麻将列表{'1':(手牌[],打出去的牌[],碰牌[],杠牌[])}
+        del self.dict_majiang_west[desk_id]
+        # 游戏桌子id 和北家麻将列表{'1':(手牌[],打出去的牌[],碰牌[],杠牌[])}
+        del self.dict_majiang_north[desk_id]
+        # 游戏座位和麻将{'id_0':东家麻将}
+        for i in range(4):
+            del self.dict_sit_majiang[desk_id + "_" + str(i)]
 
 
 if __name__ == '__main__':
