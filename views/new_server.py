@@ -21,6 +21,8 @@ class Server():
         self.create_socket()
         #准备游戏套接字列表
         self.ready_socket = []
+        #一桌游戏轮到谁来出牌{‘1’；‘0’}代表东家
+        self.dict_turns = {}
         # 游戏桌子id 和客户端套接字列表{'1':[c1,c2,c3,c4]}
         self.dict_desk = {}
         # 游戏桌子id 和牌库麻将列表{'1':[majiang]}
@@ -97,6 +99,7 @@ class Server():
                 self.do_playgame(data,c)
 
     def do_playgame(self,data,c):
+        print(data)
         #如果刚开局,data中只有desk_id信息,则由服务器直接发送数据给各个客户端
         if len(data) == 1:
             self.init_game(data)
@@ -106,6 +109,7 @@ class Server():
             desk_id = data['desk_id']
             data_majiang = {'protocol': 'Play'}
             data_majiang['desk_id'] = desk_id
+            print("初始化完了打牌")
             #如果获取到有麻将打出则提示其他玩家看牌
             if data['put_majiang']:
                 #检验其他玩家是否能赢 杠 碰,不能则轮到下家
@@ -127,20 +131,91 @@ class Server():
                             data_majiang['operation'] = 'win'
                             #告诉每个玩家,该名玩家胡牌
                             for client in lis_c:
-                                data_majiang['winner'] = self.getUserNameBySocket(i)
+                                data_majiang['user'] = self.getUserNameBySocket(lis_c[i])
                                 data_majiang['majiang_type'] = majiang_type
                                 data_majiang['peng_majiang'] = self.dict_sit_majiang[desk_id + '_' + str(i)][desk_id][2]
                                 data_majiang['angang_majiang'] = self.dict_sit_majiang[desk_id + '_' + str(i)][desk_id][3]
                                 client.send(json.dumps(data_majiang).encode())
+                        #验杠牌
+                        majiang_set.append(data['put_majiang'])
+                        angang_majiang = self.check_AAAA(majiang_set)
+                        if angang_majiang:
+                            data_majiang['operation'] = 'angang'
+                            data_majiang['angang'] = angang_majiang
+                            data['turns'] = 1
+                            self.dict_desk[desk_id][i].send(json.dumps(data_majiang).encode())
+                # 没有杠牌，让下家打牌
+                turns = self.getNextTurns(self.dict_turns[desk_id])
 
-                #改变下家turns(代表是否该他接牌)给他一张牌
-                print("==+==",data['put_majiang'])
+                self.dict_turns[desk_id] = turns
+                data_majiang['operation'] = 'put_majiang'
+                next_majiang = self.dict_majiang[desk_id][0]
+                data_majiang['get_majiang'] = next_majiang
+                majiang_lis = self.dict_sit_majiang[desk_id + '_' + str(turns)][0]
+                majiang_lis.append(next_majiang)
+                # 将玩家得到的牌给玩家
+                majiang_type, majiang_set = self.sort_majiang(majiang_lis)
+                # 存入信息
+                data_majiang['majiang'] = majiang_set
+                data_majiang['wan'] = majiang_type[0]
+                data_majiang['tiao'] = majiang_type[1]
+                data_majiang['bing'] = majiang_type[2]
+                # 碰
+                data_majiang['peng_majiang'] = self.dict_sit_majiang[desk_id + '_' + str(turns)][2]
+                # 杠
+
+                data_majiang['angang_majiang'] = self.dict_sit_majiang[desk_id + '_' + str(turns)][3]
+                self.dict_desk[desk_id][turns].send(json.dumps(data_majiang).encode())
+
+        elif data['operation'] == 'angang':
+            # 获取桌号,开始打牌
+            desk_id = data['desk_id']
+            data_majiang = {'protocol': 'Play'}
+            data_majiang['desk_id'] = desk_id
+            #玩家杠了牌
+            if data['angang']:
+                #给玩家返回麻将牌，并通知其他玩家这名玩家杠了牌
+                pass
+            else:
+                #没有杠牌，让下家打牌
+                turns = self.getNextTurns(self.dict_turns[desk_id])
+
+                self.dict_turns[desk_id] = turns
+                data_majiang['operation'] = 'put_majiang'
+                next_majiang = self.dict_majiang[desk_id][0]
+                data_majiang['next_majiang'] = next_majiang
+                majiang_lis = self.dict_sit_majiang[desk_id + '_' + str(turns)][0]
+                majiang_lis.append(next_majiang)
+                #将玩家得到的牌给玩家
+                majiang_type, majiang_set = self.sort_majiang(majiang_lis)
+                # 存入信息
+                data_majiang['majiang'] = majiang_set
+                data_majiang['wan'] = majiang_type[0]
+                data_majiang['tiao'] = majiang_type[1]
+                data_majiang['bing'] = majiang_type[2]
+                # 碰
+                data_majiang['peng_majiang'] = self.dict_sit_majiang[desk_id + '_' + str(turns)][2]
+                # 杠
+                data_majiang['angang_majiang'] = self.dict_sit_majiang[desk_id + '_' + str(turns)][3]
+                self.dict_desk[desk_id][turns].send(json.dumps(data_majiang).encode())
+
         #游戏结束
         elif data['operation'] == 'over':
             desk_id = data['desk_id']
+            #游戏结束释放资源
             self.release_resource(desk_id)
 
-            
+    def getNextTurns(self,turns):
+        """
+
+        :param desk_id: 桌号
+        :param turns: 下个玩家所在位置
+        :return: 玩家的套接字
+        """
+        next_turns = 0 if turns=='1' else (int(turns) + 1)
+        return next_turns
+
+
     def init_game(self,data):
         desk_id = data['desk_id']
         data_majiang = {'protocol': 'Play'}
@@ -148,20 +223,56 @@ class Server():
         for i in range(len(self.dict_desk[desk_id])):
             # 给麻将排序
             majiang_type, majiang_set = self.sort_majiang(self.dict_sit_majiang[desk_id+'_'+str(i)][0])
-            # 是否该这个玩家出牌
+            # 找到东家
             if len(majiang_set) == 14:
                 data_majiang['turns'] = 1
+                angang_majiang = self.check_AAAA(majiang_set)
+                #验证东家是否天湖
+                self.check_win(majiang_type[0],majiang_type[1],majiang_type[2])
+                # 验胡牌
+                if self.check_win(majiang_type[0], majiang_type[1], majiang_type[2]):
+                    data_majiang['operation'] = 'win'
+                    print('12222')
+                    lis_c = self.dict_desk[desk_id]
+                    # 告诉每个玩家,该名玩家胡牌
+                    for client in lis_c:
+                        data_majiang['winner'] = self.getUserNameBySocket(lis_c[i])
+                        data_majiang['majiang_type'] = majiang_type
+                        data_majiang['peng_majiang'] = self.dict_sit_majiang[desk_id + '_' + str(i)][2]
+                        data_majiang['angang_majiang'] = self.dict_sit_majiang[desk_id + '_' + str(i)][3]
+                        client.send(json.dumps(data_majiang).encode())
+                #验杠
+                elif angang_majiang:
+                    data_majiang['operation'] = 'angang'
+                    data_majiang['angang'] = angang_majiang
+                    self.dict_desk[desk_id][i].send(json.dumps(data_majiang).encode())
+                else:
+                    data_majiang['operation'] = 'put_majiang'
+                    # 存入信息
+                    data_majiang['majiang'] = majiang_set
+                    data_majiang['wan'] = majiang_type[0]
+                    data_majiang['tiao'] = majiang_type[1]
+                    data_majiang['bing'] = majiang_type[2]
+                    # 碰
+                    data_majiang['peng_majiang'] = []
+                    # 杠
+                    data_majiang['angang_majiang'] = []
+                    #告诉东家打牌
+                    self.dict_desk[desk_id][i].send(json.dumps(data_majiang).encode())
+            #不是东家出牌
             else:
                 data_majiang['turns'] = 0
-            data_majiang['majiang'] = majiang_set
-            data_majiang['wan'] = majiang_type[0]
-            data_majiang['tiao'] = majiang_type[1]
-            data_majiang['bing'] = majiang_type[2]
-            # 碰
-            data_majiang['peng_majiang'] = []
-            # 杠
-            data_majiang['angang_majiang'] = []
-            self.dict_desk[desk_id][i].send(json.dumps(data_majiang).encode())
+                #存入信息
+                data_majiang['majiang'] = majiang_set
+                data_majiang['wan'] = majiang_type[0]
+                data_majiang['tiao'] = majiang_type[1]
+                data_majiang['bing'] = majiang_type[2]
+                # 碰
+                data_majiang['peng_majiang'] = []
+                # 杠
+                data_majiang['angang_majiang'] = []
+                print("-=-=-=-=-=-=")
+                self.dict_desk[desk_id][i].send(json.dumps(data_majiang).encode())
 
     def do_entergame(self,c):
         #判断是否开始游戏
@@ -173,7 +284,7 @@ class Server():
         try:
             self.ready_socket.append(c)
             # 看准备好游戏套接字的个数
-            if len(self.ready_socket) < 1:
+            if len(self.ready_socket) < 2:
                 # 可以给显示匹配的样式
                 pass
             # 开始游戏
@@ -217,14 +328,11 @@ class Server():
             #初始化手牌 打乱牌库顺序
             random.shuffle(majiang)
             # 初始化4家麻将手牌[[],[],[],[]]
-            majiang_split = []
-            majiang_split.append(majiang[0:13])
-            majiang_split.append(majiang[13:26])
-            majiang_split.append(majiang[26:39])
-            majiang_split.append(majiang[39:52])
+
         finally:
             self.lock.release()
-
+        #由东家开始打牌
+        self.dict_turns[desk_id] = '0'
         # 游戏桌子id 和东家麻将列表{'1':(手牌[],打出去的牌[],碰牌[],杠牌[])}
         self.dict_majiang_east = {desk_id: [majiang[0:14],[],[],[]]}
         # 游戏桌子id 和南家麻将列表{'1':(手牌[],打出去的牌[],碰牌[],杠牌[])}
@@ -305,7 +413,7 @@ class Server():
         return majiang_type,majiang_set
 
     def getUserNameBySocket(self,c):
-        for k,v in self.dict_client_user:
+        for k,v in self.dict_client_user.items():
             if v == c:
                 return k
 
@@ -329,7 +437,7 @@ class Server():
             # 检测顺子函数
             def check_ABC():
                 nonlocal digit_list_copy
-                for j in range(3):
+                for j in range(4):
                     for i in range(1, 8):
                         if i in digit_list_copy and i + 1 \
                                 in digit_list_copy and i + 2 in digit_list_copy:
@@ -340,7 +448,7 @@ class Server():
             # 检测三个一样的
             def check_AAA():
                 nonlocal digit_list_copy
-                for j in range(3):
+                for j in range(4):
                     for i in range(1, 10):
                         if digit_list_copy.count(i) == 3:
                             digit_list_copy = [each for each in \
@@ -406,6 +514,15 @@ class Server():
                 sum([len(cupple[each]) for each in cupple]) == 1:
             return 1
         return 0
+
+    # 验杠牌,传入麻将list
+    def check_AAAA(self,majiang):
+        majiang_set = set(majiang)
+        for item in majiang_set:
+            if majiang.count(item) == 4:
+                return item
+        return None
+
     def release_resource(self,desk_id):
         # 游戏桌子id 和客户端套接字列表{'1':[c1,c2,c3,c4]}
         del self.dict_desk[desk_id]

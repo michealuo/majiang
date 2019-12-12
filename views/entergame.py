@@ -98,26 +98,28 @@ class EnterGame(QDialog):
         json_info['turns'] = 0
         #操作信息
         json_info['operation'] = 'init_over'
-
-
-        if first_data['turns']:
-            #东家看牌:win,gang
-            pass
-
-            #东家初始化
-            self.putresult = g.choicebox(
-                '您的麻将是:\n%s\n%s\n%s\n碰：%s\n杠：%s\n请选择要打的麻将' % \
-                (str(first_data['wan']), str(first_data['tiao']), str(first_data['bing']),
-                 str(first_data['peng_majiang']), str(first_data['angang_majiang'])), '打麻将',
-                first_data['majiang'])
-            # 打出的麻将
-            json_info['put_majiang'] = self.putresult
-            #东家回消息打出麻将
-            json_info['operation'] = 'put_majiang'
-            # 是否是该玩家出的牌
-            json_info['turns'] = 1
-
+        #初始化天湖开局
+        if first_data['operation'] == 'win':
+            g.msgbox('玩家%s胡了！\n%s' % (first_data['user'], str(first_data['majiang_type']) + \
+                                      3 * str(first_data['peng_majiang']) + 4 * str(first_data['angang_majiang'])))
+            json_info['operation'] = 'over'
             self.s.send(json.dumps(json_info).encode())
+        elif first_data['operation'] == 'angang':
+            yngang = g.ynbox('是否杠%s？' % first_data['angang'])
+            json_info['operation'] = 'angang'
+            # 返回是否杠
+            if yngang:
+                json_info['angang'] = yngang
+                self.s.send(json.dumps(json_info).encode())
+            #不杠就打牌
+            else:
+                self.put_majiang(first_data,json_info)
+
+        elif first_data['turns']:
+
+            #东家初始化直接打牌
+            self.put_majiang(first_data,json_info)
+
         else:
             #其他玩家看牌
             g.msgbox('您的麻将是:\n%s\n%s\n%s\n碰：%s\n杠：%s\n' % \
@@ -131,15 +133,46 @@ class EnterGame(QDialog):
 
     def playgame(self):
         json_info = {}
+        json_info['protocol'] = 'Play'
+
         while True:
+            print('=====000====')
             data = json.loads(self.s.recv(1024).decode())
+            print('=====111====',data)
+            json_info['desk_id'] = data['desk_id']
             #判断操作
             if data['operation'] == 'win':
-                g.msgbox('玩家%s胡了！\n%s' % (data['winner'], str(data['majiang_type']) + \
+                g.msgbox('玩家%s胡了！\n%s' % (data['user'], str(data['majiang_type']) + \
                                           3 * str(data['peng_majiang']) + 4 * str(data['angang_majiang'])))
+                json_info['operation'] = 'over'
+            elif data['operation'] == 'angang':
+                if data['turns']:
+                    yngang = g.ynbox('是否杠%s？' % data['angang'])
+                    json_info['operation'] = 'angang'
+                    #返回是否杠
+                    json_info['angang'] = yngang
+                else:
+                    g.msgbox('玩家%s杠了！\n%s' % (data['username'],data['angang_majiang']))
+            elif data['operation'] == 'put_majiang':
+                g.msgbox('您获得了%s' % data['get_majiang'])
+                print('2222')
+                self.put_majiang(data,json_info)
 
-            json_info['operation'] = 'over'
-            json_info['protocol'] = 'Play'
-            json_info['desk_id'] = data['desk_id']
 
             self.s.send(json.dumps(json_info).encode())
+    def put_majiang(self,data,json_info):
+        putresult = g.choicebox(
+            '您的麻将是:\n%s\n%s\n%s\n碰：%s\n杠：%s\n请选择要打的麻将' % \
+            (str(data['wan']), str(data['tiao']), str(data['bing']),
+             str(data['peng_majiang']), str(data['angang_majiang'])), '打麻将',
+            data['majiang'])
+        # 打出的麻将
+        print(putresult,'打出的麻将是')
+        json_info['put_majiang'] = putresult
+        # 东家回消息打出麻将
+        json_info['operation'] = 'put_majiang'
+        # 是否是该玩家出的牌
+        json_info['turns'] = 1
+        json_info['desk_id'] = data['desk_id']
+
+        self.s.send(json.dumps(json_info).encode())
